@@ -21,7 +21,7 @@ Admin orqali ustoz rasmi, fani, bio va o‘quv rejalarini (PDF, DOCX, PPTX fayll
 
 ## Internetga joylash
 
-Python/Flask ishlaydigan hosting kerak (masalan VPS yoki persistent diskli PaaS). Start command: `gunicorn -w 2 -b 0.0.0.0:$PORT app:app`. HTTPS, `SECRET_KEY`, `ADMIN_PASSWORD`, persistent storage va backupni sozlang. Oddiy static hosting (Netlify drag-and-drop) admin ma’lumotlarini saqlay olmaydi. CRM o‘quvchi hisoblari va EDU COIN balansi ushbu loyihada ulanmagan: sayt CRM imkoniyatlarini tavsiflaydi, lekin haqiqiy o‘quvchi ma’lumotlarini ko‘rsatmaydi.
+Python/Flask ishlaydigan hosting kerak (masalan VPS yoki persistent diskli PaaS). Start command: `gunicorn -w 2 -b 0.0.0.0:$PORT app:app`. HTTPS, `SECRET_KEY`, `ADMIN_PASSWORD`, persistent storage va backupni sozlang. Oddiy static hosting (Netlify drag-and-drop) admin ma’lumotlarini saqlay olmaydi. CRM o‘quvchi hisoblari va EURO COIN balansi ushbu loyihada ulanmagan: sayt CRM imkoniyatlarini tavsiflaydi, lekin haqiqiy o‘quvchi ma’lumotlarini ko‘rsatmaydi.
 
 ## Eslatma
 
