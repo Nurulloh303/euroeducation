@@ -1,9 +1,22 @@
-import os,sqlite3,secrets,uuid
+import os,sqlite3,secrets,uuid,shutil
 from functools import wraps
 from flask import Flask,request,jsonify,send_from_directory,session
 from werkzeug.security import generate_password_hash,check_password_hash
 from werkzeug.utils import secure_filename
-ROOT=os.path.dirname(__file__);DB=os.path.join(ROOT,'data.sqlite3')
+ROOT=os.path.dirname(__file__)
+IS_VERCEL=bool(os.environ.get('VERCEL'))
+if IS_VERCEL:
+ TMP='/tmp'
+ DB=os.path.join(TMP,'data.sqlite3')
+ orig_db=os.path.join(ROOT,'data.sqlite3')
+ if not os.path.exists(DB) and os.path.exists(orig_db):
+  try:shutil.copy2(orig_db,DB)
+  except Exception:pass
+ UPLOAD_DIR=os.path.join(TMP,'uploads')
+else:
+ DB=os.path.join(ROOT,'data.sqlite3')
+ UPLOAD_DIR=os.path.join(ROOT,'static','uploads')
+os.makedirs(UPLOAD_DIR,exist_ok=True)
 app=Flask(__name__,static_folder='static',static_url_path='/static')
 app.secret_key=os.environ.get('SECRET_KEY',secrets.token_hex(32))
 app.config.update(SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE='Lax',MAX_CONTENT_LENGTH=35*1024*1024)
@@ -73,18 +86,22 @@ def upload():
  allowed_doc=('.pdf','.docx','.doc','.pptx','.ppt')
  if ext not in allowed_img and ext not in allowed_doc:
   return jsonify(error='Faqat rasm (JPG, PNG, WEBP) yoki hujjat (PDF, DOCX, PPTX) yuklash mumkin'),400
- os.makedirs(os.path.join(ROOT,'static','uploads'),exist_ok=True)
+ os.makedirs(UPLOAD_DIR,exist_ok=True)
  if ext in allowed_img:
   from PIL import Image
   try:
    img=Image.open(f.stream);img.verify();f.stream.seek(0)
-   img=Image.open(f.stream);img.thumbnail((1200,1200));name=uuid.uuid4().hex+'.webp';img.convert('RGB').save(os.path.join(ROOT,'static','uploads',name),'WEBP',quality=86)
+   img=Image.open(f.stream);img.thumbnail((1200,1200));name=uuid.uuid4().hex+'.webp';img.convert('RGB').save(os.path.join(UPLOAD_DIR,name),'WEBP',quality=86)
    return jsonify(url='/static/uploads/'+name,name=f.filename,type='image')
   except Exception:return jsonify(error='Rasmni o‘qib bo‘lmadi'),400
  else:
   try:
    name=uuid.uuid4().hex+ext
-   f.save(os.path.join(ROOT,'static','uploads',name))
+   f.save(os.path.join(UPLOAD_DIR,name))
    return jsonify(url='/static/uploads/'+name,name=f.filename,type='doc',ext=ext)
   except Exception:return jsonify(error='Hujjatni saqlashda xatolik yuz berdi'),400
+@app.route('/static/uploads/<path:filename>')
+def serve_upload(filename):
+ if os.path.exists(os.path.join(UPLOAD_DIR,filename)):return send_from_directory(UPLOAD_DIR,filename)
+ return send_from_directory(os.path.join(ROOT,'static','uploads'),filename)
 if __name__=='__main__':app.run(host='0.0.0.0',port=int(os.environ.get('PORT','5000')))
