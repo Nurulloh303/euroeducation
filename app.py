@@ -56,13 +56,17 @@ def init():
             cur.execute('''CREATE TABLE IF NOT EXISTS admins(
                 id SERIAL PRIMARY KEY, username TEXT UNIQUE, password TEXT NOT NULL)''')
             cur.execute("SELECT COUNT(*) FROM admins")
+            pwd = os.environ.get('ADMIN_PASSWORD')
             if cur.fetchone()['count'] == 0:
-                pwd = os.environ.get('ADMIN_PASSWORD')
                 if not pwd:
                     pwd = secrets.token_urlsafe(12)
                     print(f'\n*** FIRST ADMIN PASSWORD: {pwd} ***\n', flush=True)
                 cur.execute("INSERT INTO admins(username,password) VALUES(%s,%s)",
                             ('admin', generate_password_hash(pwd)))
+            elif pwd:
+                # ADMIN_PASSWORD o'rnatilgan bo'lsa, har ishga tushganda yangilanadi
+                cur.execute("UPDATE admins SET password=%s WHERE username='admin'",
+                            (generate_password_hash(pwd),))
             conn.commit()
         else:
             cur = conn.cursor()
@@ -81,13 +85,17 @@ def init():
                 cur.execute('ALTER TABLE plans ADD COLUMN file TEXT NOT NULL DEFAULT ""')
             if 'file_name' not in cols:
                 cur.execute('ALTER TABLE plans ADD COLUMN file_name TEXT NOT NULL DEFAULT ""')
+            pwd = os.environ.get('ADMIN_PASSWORD')
             if not cur.execute('SELECT COUNT(*) FROM admins').fetchone()[0]:
-                pwd = os.environ.get('ADMIN_PASSWORD')
                 if not pwd:
                     pwd = secrets.token_urlsafe(12)
                     print(f'\n*** FIRST ADMIN PASSWORD: {pwd} ***\n', flush=True)
                 cur.execute('INSERT INTO admins(username,password) VALUES(?,?)',
                             ('admin', generate_password_hash(pwd)))
+            elif pwd:
+                # ADMIN_PASSWORD o'rnatilgan bo'lsa, har ishga tushganda yangilanadi
+                cur.execute('UPDATE admins SET password=? WHERE username="admin"',
+                            (generate_password_hash(pwd),))
             conn.commit()
 
 init()
