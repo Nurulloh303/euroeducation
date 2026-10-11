@@ -60,8 +60,17 @@ def collection(kind):
  if request.method=='GET':
   with db() as c:return jsonify([dict(x) for x in c.execute(f'SELECT * FROM {kind} ORDER BY id DESC')])
  if not session.get('admin'):return jsonify(error='Unauthorized'),401
- x=request.get_json(silent=True) or {};fields=['name','subject','bio','image'] if kind=='teachers' else ['title','category','description','duration','file','file_name']
- if any(not str(x.get(f,'')).strip() for f in fields[:3]):return jsonify(error='Majburiy maydonlarni to‘ldiring'),400
+ x=request.get_json(silent=True) or {}
+ if kind=='teachers':
+  if not str(x.get('name','')).strip():return jsonify(error='Ustoz ism-familiyasini kiriting'),400
+  if not str(x.get('subject','')).strip():return jsonify(error='Ustoz fani nomini kiriting'),400
+  if not str(x.get('bio','')).strip():return jsonify(error='Ustoz haqida qisqa ma’lumot kiriting'),400
+  fields=['name','subject','bio','image']
+ else:
+  if not str(x.get('title','')).strip():return jsonify(error='Reja nomini kiriting'),400
+  if not str(x.get('category','')).strip():return jsonify(error='Yo‘nalish yoki fanni kiriting'),400
+  if not str(x.get('description','')).strip():return jsonify(error='Reja haqida ma’lumot kiriting'),400
+  fields=['title','category','description','duration','file','file_name']
  vals=[str(x.get(f,''))[:1200] for f in fields]
  with db() as c:
   cur=c.execute(f'INSERT INTO {kind} ({",".join(fields)}) VALUES ({",".join("?" for _ in fields)})',vals)
@@ -72,16 +81,25 @@ def item(kind,item_id):
  if kind not in ('teachers','plans'):return jsonify(error='Not found'),404
  with db() as c:
   if request.method=='DELETE':c.execute(f'DELETE FROM {kind} WHERE id=?',(item_id,));return jsonify(ok=True)
-  x=request.get_json(silent=True) or {};fields=['name','subject','bio','image'] if kind=='teachers' else ['title','category','description','duration','file','file_name']
-  if any(not str(x.get(f,'')).strip() for f in fields[:3]):return jsonify(error='Majburiy maydonlarni to‘ldiring'),400
+  x=request.get_json(silent=True) or {}
+  if kind=='teachers':
+   if not str(x.get('name','')).strip():return jsonify(error='Ustoz ism-familiyasini kiriting'),400
+   if not str(x.get('subject','')).strip():return jsonify(error='Ustoz fani nomini kiriting'),400
+   if not str(x.get('bio','')).strip():return jsonify(error='Ustoz haqida qisqa ma’lumot kiriting'),400
+   fields=['name','subject','bio','image']
+  else:
+   if not str(x.get('title','')).strip():return jsonify(error='Reja nomini kiriting'),400
+   if not str(x.get('category','')).strip():return jsonify(error='Yo‘nalish yoki fanni kiriting'),400
+   if not str(x.get('description','')).strip():return jsonify(error='Reja haqida ma’lumot kiriting'),400
+   fields=['title','category','description','duration','file','file_name']
   vals=[str(x.get(f,''))[:1200] for f in fields];c.execute(f'UPDATE {kind} SET {",".join(f+"=?" for f in fields)} WHERE id=?',vals+[item_id]);return jsonify(ok=True)
 @app.post('/api/upload')
 @auth
 def upload():
  f=request.files.get('file')
  if not f:return jsonify(error='Fayl tanlanmagan'),400
- fname=secure_filename(f.filename) or 'file'
- ext=os.path.splitext(fname)[1].lower()
+ raw_name=f.filename or 'fayl'
+ ext=os.path.splitext(raw_name)[1].lower()
  allowed_img=('.jpg','.jpeg','.png','.webp')
  allowed_doc=('.pdf','.docx','.doc','.pptx','.ppt')
  if ext not in allowed_img and ext not in allowed_doc:
@@ -92,13 +110,13 @@ def upload():
   try:
    img=Image.open(f.stream);img.verify();f.stream.seek(0)
    img=Image.open(f.stream);img.thumbnail((1200,1200));name=uuid.uuid4().hex+'.webp';img.convert('RGB').save(os.path.join(UPLOAD_DIR,name),'WEBP',quality=86)
-   return jsonify(url='/static/uploads/'+name,name=f.filename,type='image')
+   return jsonify(url='/static/uploads/'+name,name=raw_name,type='image')
   except Exception:return jsonify(error='Rasmni o‘qib bo‘lmadi'),400
  else:
   try:
    name=uuid.uuid4().hex+ext
    f.save(os.path.join(UPLOAD_DIR,name))
-   return jsonify(url='/static/uploads/'+name,name=f.filename,type='doc',ext=ext)
+   return jsonify(url='/static/uploads/'+name,name=raw_name,type='doc',ext=ext)
   except Exception:return jsonify(error='Hujjatni saqlashda xatolik yuz berdi'),400
 @app.route('/static/uploads/<path:filename>')
 def serve_upload(filename):
